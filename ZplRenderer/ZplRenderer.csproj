@@ -1,51 +1,55 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>8.0.30703</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>ZplRenderer</RootNamespace>
+    <AssemblyName>ZplRenderer</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
   </PropertyGroup>
-
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="BinaryKits.Zpl.Viewer" Version="1.3.0" />
-    <PackageReference Include="Costura.Fody" Version="5.8.0">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Fody" Version="6.9.3">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="itext.bouncy-castle-adapter" Version="8.0.7" />
-    <PackageReference Include="itext7" Version="8.0.7" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.1" />
-    <PackageReference Include="HarfBuzzSharp.NativeAssets.Win32" Version="8.3.1.2" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
-
-  <!-- Ensure native dependencies are available -->
-  <PropertyGroup>
-    <EnableDynamicLoading>true</EnableDynamicLoading>
-  </PropertyGroup>
-
-  <!-- Manually copy Windows native assets since Costura doesn't handle them properly -->
-  <Target Name="CopyWindowsNativeAssets" AfterTargets="AfterBuild">
-    <ItemGroup>
-      <SkiaSharpWinX64 Include="$(NuGetPackageRoot)skiasharp.nativeassets.win32\3.119.1\runtimes\win-x64\native\*.dll" />
-      <SkiaSharpWinX86 Include="$(NuGetPackageRoot)skiasharp.nativeassets.win32\3.119.1\runtimes\win-x86\native\*.dll" />
-      <SkiaSharpWinArm64 Include="$(NuGetPackageRoot)skiasharp.nativeassets.win32\3.119.1\runtimes\win-arm64\native\*.dll" />
-      <HarfBuzzWinX64 Include="$(NuGetPackageRoot)harfbuzzsharp.nativeassets.win32\8.3.1.2\runtimes\win-x64\native\*.dll" />
-      <HarfBuzzWinX86 Include="$(NuGetPackageRoot)harfbuzzsharp.nativeassets.win32\8.3.1.2\runtimes\win-x86\native\*.dll" />
-      <HarfBuzzWinArm64 Include="$(NuGetPackageRoot)harfbuzzsharp.nativeassets.win32\8.3.1.2\runtimes\win-arm64\native\*.dll" />
-    </ItemGroup>
-    <Copy SourceFiles="@(SkiaSharpWinX64)" DestinationFolder="$(OutDir)runtimes\win-x64\native" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(SkiaSharpWinX86)" DestinationFolder="$(OutDir)runtimes\win-x86\native" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(SkiaSharpWinArm64)" DestinationFolder="$(OutDir)runtimes\win-arm64\native" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(HarfBuzzWinX64)" DestinationFolder="$(OutDir)runtimes\win-x64\native" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(HarfBuzzWinX86)" DestinationFolder="$(OutDir)runtimes\win-x86\native" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(HarfBuzzWinArm64)" DestinationFolder="$(OutDir)runtimes\win-arm64\native" SkipUnchangedFiles="true" />
-  </Target>
-
+  <ItemGroup>
+    <Compile Include="Config\AppConstants.cs" />
+    <Compile Include="Core\Enums\OutputFormat.cs" />
+    <Compile Include="Core\Interfaces\IZplRenderer.cs" />
+    <Compile Include="Core\ZplParser\ZplCommand.cs" />
+    <Compile Include="Core\ZplParser\ZplParser.cs" />
+    <Compile Include="Infrastructure\Renderers\ZplImageRenderer.cs" />
+    <Compile Include="Infrastructure\Renderers\ZplRenderService.cs" />
+    <Compile Include="Infrastructure\Utils\MemoryOptimizer.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
