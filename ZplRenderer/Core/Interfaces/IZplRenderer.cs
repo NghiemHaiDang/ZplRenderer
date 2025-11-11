@@ -1,4 +1,15 @@
-﻿using System;
+﻿#if NET40
+using System;
+
+namespace ZplRenderer.Core.Interfaces
+{
+    public interface IZplRenderer
+    {
+        void ConvertZplToFile(string zplFilePath, string outputDirectory, string format);
+    }
+}
+#else
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -11,3 +22,4 @@ namespace ZplRenderer.Core.Interfaces
         Task ConvertZplToFileAsync(string zplFilePath, string outputDirectory, string format);
     }
 }
+#endif

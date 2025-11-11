@@ -1,10 +1,3 @@
-﻿#if NET40
-using System;
-using System.Diagnostics;
-using System.IO;
-using System.Reflection;
-using ZplRenderer.Core.Interfaces;
-#else
 using BinaryKits.Zpl.Viewer;
 using BinaryKits.Zpl.Viewer.Models;
 using iText.IO.Image;
@@ -14,113 +7,65 @@ using iText.Layout.Element;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ZplRenderer.Core.Interfaces;
-using ZplRenderer.Infrastructure.Utils;
-#endif
 
-namespace ZplRenderer.Infrastructure.Renderers
+namespace ZplRenderer.Console
 {
-    public class ZplRenderService : IZplRenderer
+    class Program
     {
-#if NET40
-        private static string consoleExePath;
-
-        public void ConvertZplToFile(string zplFilePath, string outputDirectory, string format)
+        static async Task<int> Main(string[] args)
         {
-            // Ensure console app is extracted
-            EnsureConsoleAppExtracted();
-
-            // Validate inputs
-            if (!File.Exists(zplFilePath))
-                throw new FileNotFoundException("ZPL file not found: " + zplFilePath);
-
-            if (!IsValidFormat(format))
-                throw new ArgumentException("Invalid format. Use: png, jpg, jpeg, or pdf");
-
-            // Create output directory
-            Directory.CreateDirectory(outputDirectory);
-
-            // Execute console app
-            var startInfo = new ProcessStartInfo
+            try
             {
-                FileName = consoleExePath,
-                Arguments = string.Format("\"{0}\" \"{1}\" \"{2}\"", zplFilePath, outputDirectory, format),
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true
-            };
-
-            using (var process = Process.Start(startInfo))
-            {
-                string output = process.StandardOutput.ReadToEnd();
-                string error = process.StandardError.ReadToEnd();
-                process.WaitForExit();
-
-                if (process.ExitCode != 0)
+                if (args.Length != 3)
                 {
-                    throw new Exception(string.Format("ZPL conversion failed with exit code {0}. Error: {1}",
-                        process.ExitCode, error));
+                    System.Console.WriteLine("Usage: ZplRenderer.Console.exe <zplFilePath> <outputDirectory> <format>");
+                    System.Console.WriteLine("Format: png, jpg, jpeg, or pdf");
+                    return 1;
                 }
+
+                string zplFilePath = args[0];
+                string outputDirectory = args[1];
+                string format = args[2];
+
+                // Validate input
+                if (!File.Exists(zplFilePath))
+                {
+                    System.Console.WriteLine($"Error: ZPL file not found: {zplFilePath}");
+                    return 2;
+                }
+
+                if (!IsValidFormat(format))
+                {
+                    System.Console.WriteLine($"Error: Invalid format '{format}'. Use: png, jpg, jpeg, or pdf");
+                    return 3;
+                }
+
+                // Create output directory
+                Directory.CreateDirectory(outputDirectory);
+
+                // Process ZPL file
+                await ConvertZplToFileAsync(zplFilePath, outputDirectory, format);
+
+                System.Console.WriteLine("✓ Conversion completed successfully");
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine($"Error: {ex.Message}");
+                return 99;
             }
         }
 
-        private static void EnsureConsoleAppExtracted()
-        {
-            if (consoleExePath != null && File.Exists(consoleExePath))
-                return;
-
-            string tempDir = Path.Combine(Path.GetTempPath(), "ZplRenderer");
-            Directory.CreateDirectory(tempDir);
-
-            consoleExePath = Path.Combine(tempDir, "ZplRenderer.Console.exe");
-
-            if (File.Exists(consoleExePath))
-                return;
-
-            // Extract embedded console app with optimized buffer
-            Assembly assembly = Assembly.GetExecutingAssembly();
-            string resourceName = "ZplRenderer.Console.exe";
-
-            using (Stream stream = assembly.GetManifestResourceStream(resourceName))
-            {
-                if (stream == null)
-                    throw new Exception("Embedded console app not found in DLL resources.");
-
-                using (FileStream fileStream = new FileStream(consoleExePath,
-                    FileMode.Create, FileAccess.Write, FileShare.None,
-                    bufferSize: 81920)) // 80KB buffer for faster write
-                {
-                    byte[] buffer = new byte[81920];
-                    int bytesRead;
-                    while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
-                    {
-                        fileStream.Write(buffer, 0, bytesRead);
-                    }
-                }
-            }
-        }
-
-        private static bool IsValidFormat(string format)
+        static bool IsValidFormat(string format)
         {
             return format.Equals("png", StringComparison.OrdinalIgnoreCase) ||
                    format.Equals("jpg", StringComparison.OrdinalIgnoreCase) ||
                    format.Equals("jpeg", StringComparison.OrdinalIgnoreCase) ||
                    format.Equals("pdf", StringComparison.OrdinalIgnoreCase);
         }
-#else
-        public async Task ConvertZplToFileAsync(string zplFilePath, string outputDirectory, string format)
+
+        static async Task ConvertZplToFileAsync(string zplFilePath, string outputDirectory, string format)
         {
-            if (!File.Exists(zplFilePath))
-                throw new FileNotFoundException($"ZPL file not found: {zplFilePath}");
-
-            Directory.CreateDirectory(outputDirectory);
-
             using var reader = new StreamReader(zplFilePath);
             string? line;
             var buffer = new List<string>();
@@ -151,11 +96,11 @@ namespace ZplRenderer.Infrastructure.Renderers
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"⚠️ Lỗi khi xử lý label {fileIndex}: {ex.Message}");
+                        System.Console.WriteLine($"⚠ Warning: Error processing label {fileIndex}: {ex.Message}");
                     }
 
                     buffer.Clear();
-                    MemoryOptimizer.ForceCollect();
+                    GC.Collect();
                 }
             }
 
@@ -175,7 +120,7 @@ namespace ZplRenderer.Infrastructure.Renderers
             }
         }
 
-        private async Task ProcessZplChunkAsync(List<string> zplLines, string outputDirectory, string format, int fileIndex, Document? document)
+        static async Task ProcessZplChunkAsync(List<string> zplLines, string outputDirectory, string format, int fileIndex, Document? document)
         {
             string zplText = string.Join(Environment.NewLine, zplLines);
 
@@ -197,7 +142,7 @@ namespace ZplRenderer.Infrastructure.Renderers
 
                         if (imageBytes == null || imageBytes.Length == 0)
                         {
-                            Console.WriteLine($"⚠️ Không thể render label {fileIndex}");
+                            System.Console.WriteLine($"⚠ Warning: Unable to render label {fileIndex}");
                             continue;
                         }
 
@@ -234,10 +179,9 @@ namespace ZplRenderer.Infrastructure.Renderers
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠️ Lỗi khi render label {fileIndex}: {ex.Message}");
+                    System.Console.WriteLine($"⚠ Warning: Error rendering label {fileIndex}: {ex.Message}");
                 }
             });
         }
-#endif
     }
 }

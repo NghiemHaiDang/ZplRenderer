@@ -1,0 +1,32 @@
+^XA
+^FO50,50
+^A0N,50,50
+^FDHello World!^FS
+^FO50,150
+^A0N,30,30
+^FDZplRenderer Demo^FS
+^FO50,220
+^A0N,25,25
+^FD.NET Framework 4.0^FS
+^FO50,280
+^GB700,3,3^FS
+^FO50,320
+^A0N,20,20
+^FDBarcode Example:^FS
+^FO50,360
+^BY3,3,100
+^BCN,100,Y,N,N
+^FD123456789^FS
+^XZ
+
+^XA
+^FO50,50
+^A0N,40,40
+^FDSecond Label^FS
+^FO50,150
+^A0N,30,30
+^FDSupports Multiple Labels^FS
+^FO50,220
+^A0N,25,25
+^FDPDF | PNG | JPG^FS
+^XZ

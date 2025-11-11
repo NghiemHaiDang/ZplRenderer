@@ -2,36 +2,75 @@
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <TargetFrameworks>net40;net8.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
+  <!-- .NET 8.0 specific settings -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- .NET 4.0 specific settings -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net40'">
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+
+  <!-- Exclude console app source and documentation files from compilation -->
   <ItemGroup>
+    <Compile Remove="ZplRenderer.Console\**" />
+    <Compile Remove="EXAMPLES.cs" />
+    <Compile Remove="SAMPLE.zpl" />
+    <EmbeddedResource Remove="ZplRenderer.Console\**" Condition="'$(TargetFramework)' != 'net40'" />
+    <None Remove="ZplRenderer.Console\**" />
+    <None Include="EXAMPLES.cs" />
+    <None Include="README.md" />
+    <None Include="QUICK_START.md" />
+    <None Include="RELEASE_NOTES.md" />
+    <None Include="SAMPLE.zpl" />
+  </ItemGroup>
+
+  <!-- .NET 8.0 dependencies -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <PackageReference Include="BinaryKits.Zpl.Viewer" Version="1.3.0" />
-    <PackageReference Include="Costura.Fody" Version="5.8.0">
+    <!-- Costura.Fody temporarily disabled due to file lock issues -->
+    <!--<PackageReference Include="Costura.Fody" Version="5.8.0">
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Fody" Version="6.9.3">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="itext.bouncy-castle-adapter" Version="8.0.7" />
-    <PackageReference Include="itext7" Version="8.0.7" />
+    </PackageReference>-->
+    <PackageReference Include="itext.bouncy-castle-adapter" Version="9.0.0" />
+    <PackageReference Include="itext7" Version="9.0.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageReference Include="SkiaSharp.NativeAssets.Win32" Version="3.119.1" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.1" />
     <PackageReference Include="HarfBuzzSharp.NativeAssets.Win32" Version="8.3.1.2" />
   </ItemGroup>
 
-  <!-- Ensure native dependencies are available -->
-  <PropertyGroup>
+  <!-- .NET 4.0 dependencies -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net40'">
+    <PackageReference Include="Microsoft.Bcl.Async" Version="1.0.168" />
+  </ItemGroup>
+
+  <!-- Embed console app for .NET 4.0 -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net40'">
+    <EmbeddedResource Include="ZplRenderer.Console\bin\Release\net8.0\win-x64\publish\ZplRenderer.Console.exe">
+      <LogicalName>ZplRenderer.Console.exe</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <!-- Ensure native dependencies are available for .NET 8.0 -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
 
-  <!-- Manually copy Windows native assets since Costura doesn't handle them properly -->
-  <Target Name="CopyWindowsNativeAssets" AfterTargets="AfterBuild">
+  <!-- Manually copy Windows native assets for .NET 8.0 only -->
+  <Target Name="CopyWindowsNativeAssets" AfterTargets="AfterBuild" Condition="'$(TargetFramework)' == 'net8.0'">
     <ItemGroup>
       <SkiaSharpWinX64 Include="$(NuGetPackageRoot)skiasharp.nativeassets.win32\3.119.1\runtimes\win-x64\native\*.dll" />
       <SkiaSharpWinX86 Include="$(NuGetPackageRoot)skiasharp.nativeassets.win32\3.119.1\runtimes\win-x86\native\*.dll" />
