@@ -69,6 +69,12 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
 
+  <!-- Auto-publish Console app before building .NET 4.0 target -->
+  <Target Name="PublishConsoleApp" BeforeTargets="BeforeBuild" Condition="'$(TargetFramework)' == 'net40' AND !Exists('ZplRenderer.Console\bin\Release\net8.0\win-x64\publish\ZplRenderer.Console.exe')">
+    <Message Text="Publishing ZplRenderer.Console for embedding..." Importance="high" />
+    <Exec Command="dotnet publish $(MSBuildProjectDirectory)\ZplRenderer.Console\ZplRenderer.Console.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true" />
+  </Target>
+
   <!-- Manually copy Windows native assets for .NET 8.0 only -->
   <Target Name="CopyWindowsNativeAssets" AfterTargets="AfterBuild" Condition="'$(TargetFramework)' == 'net8.0'">
     <ItemGroup>

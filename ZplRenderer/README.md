@@ -17,41 +17,86 @@
 
 ## 🎯 Yêu Cầu Hệ Thống
 
-### Môi Trường Phát Triển
-- **.NET Framework:** 4.0 trở lên
-- **Visual Studio:** 2010 hoặc mới hơn (khuyến nghị 2019+)
+### Môi Trường Phát Triển (Developer)
+- **.NET SDK:** 8.0+ (để build từ source)
+- **.NET Framework:** 4.0 Developer Pack (để build target NET 4.0)
+- **Visual Studio:** 2022+ (khuyến nghị) hoặc VS Code
 - **Hệ điều hành:** Windows 7 trở lên
 
-### Môi Trường Chạy
+### Môi Trường Chạy (End User)
+
+#### ✅ Cho ứng dụng .NET 4.0 - 4.8 (Legacy)
 - **OS:** Windows 7/8/10/11 (x64)
-- **.NET Framework:** 4.0 trở lên (đã có sẵn trong Windows)
-- **Dung lượng:** ~26 MB (DLL) + 26 MB (temp folder khi chạy lần đầu)
-- **Quyền:** Quyền ghi vào temp folder (`%TEMP%`)
+- **.NET Framework:** 4.0 trở lên (có sẵn trong Windows)
+- **Dung lượng:** ~52 MB (26MB DLL + 26MB temp khi chạy lần đầu)
+- **Quyền:** Quyền ghi vào `%TEMP%` folder
+
+**⚠️ QUAN TRỌNG:**
+- **KHÔNG CẦN** cài .NET 8.0 trên máy đích
+- **KHÔNG CẦN** cài thêm dependency nào khác
+- DLL đã bao gồm .NET 8.0 runtime (self-contained)
+- Chỉ cần .NET Framework 4.0 là đủ!
+
+#### ✅ Cho ứng dụng .NET 8.0+
+- **OS:** Windows/Linux/macOS
+- **.NET Runtime:** 8.0+
+- **Dung lượng:** ~15 MB (DLL + dependencies)
 
 ---
 
 ## 📦 Cài Đặt
 
-### Bước 1: Download DLL
+### Bước 1: Build hoặc Download DLL
 
-Lấy file DLL từ folder build output:
-```
-ZplRenderer/bin/Release/net40/ZplRenderer.dll
+#### Option A: Build từ source
+```bash
+# Clone repository
+git clone <repository-url>
+cd ZplRenderer
+
+# Build project
+dotnet build -c Release
 ```
 
-### Bước 2: Thêm Reference vào Project
+Output files sẽ nằm tại:
+- **.NET 8.0+**: `bin/Release/net8.0/ZplRenderer.dll` (~200KB + dependencies)
+- **.NET 4.0+**: `bin/Release/net40/ZplRenderer.dll` (~26MB, self-contained)
+
+**Xem chi tiết:** [BUILD_GUIDE.md](BUILD_GUIDE.md)
+
+#### Option B: Download pre-built DLL
+Lấy file DLL từ Releases hoặc build output folder
+
+### Bước 2: Chọn DLL phù hợp với project
+
+| Ứng dụng của bạn | Chọn DLL | Kích thước | Đặc điểm |
+|------------------|----------|------------|----------|
+| .NET Framework 4.0 - 4.8 | `net40/ZplRenderer.dll` | 26MB | ✅ Self-contained<br>✅ Không cần .NET 8.0<br>✅ Chỉ cần 1 file DLL<br>⚠️ Lần đầu extract 26MB vào %TEMP% |
+| .NET 8.0+ | `net8.0/ZplRenderer.dll` | ~200KB | ✅ Nhỏ gọn<br>⚠️ Cần copy dependencies<br>⚠️ Cần .NET 8.0 runtime |
+
+**Khuyến nghị:**
+- Môi trường legacy (chỉ có .NET 4.0): Dùng `net40/ZplRenderer.dll`
+- Môi trường hiện đại (.NET 8.0+): Dùng `net8.0/ZplRenderer.dll`
+
+### Bước 3: Thêm Reference vào Project
 
 #### Cách 1: Qua Visual Studio
 1. Right-click vào project → **Add** → **Reference**
-2. Click **Browse** → Chọn file `ZplRenderer.dll`
+2. Click **Browse** → Chọn file `ZplRenderer.dll` (net40 hoặc net8.0)
 3. Click **OK**
 
 #### Cách 2: Edit .csproj trực tiếp
 ```xml
 <ItemGroup>
+  <!-- For .NET 4.0 projects -->
   <Reference Include="ZplRenderer">
-    <HintPath>path\to\ZplRenderer.dll</HintPath>
+    <HintPath>path\to\net40\ZplRenderer.dll</HintPath>
   </Reference>
+
+  <!-- For .NET 8.0+ projects -->
+  <PackageReference Include="ZplRenderer">
+    <HintPath>path\to\net8.0\ZplRenderer.dll</HintPath>
+  </PackageReference>
 </ItemGroup>
 ```
 
@@ -59,9 +104,10 @@ ZplRenderer/bin/Release/net40/ZplRenderer.dll
 
 ## 🚀 Cách Sử Dụng
 
-### 1. Basic Usage - Chuyển đổi đơn giản
+### 1. Basic Usage - .NET Framework 4.0 - 4.8
 
 ```csharp
+using System;
 using ZplRenderer.Infrastructure.Renderers;
 
 class Program
@@ -71,8 +117,33 @@ class Program
         // Tạo service
         var service = new ZplRenderService();
 
-        // Chuyển đổi ZPL sang PDF
+        // Chuyển đổi ZPL sang PDF (SYNC method cho .NET 4.0)
         service.ConvertZplToFile(
+            zplFilePath: @"C:\input\label.zpl",
+            outputDirectory: @"C:\output",
+            format: "pdf"
+        );
+
+        Console.WriteLine("Conversion completed!");
+        // ✅ Chạy được trên môi trường CHỈ CÓ .NET Framework 4.0
+        // ✅ KHÔNG CẦN cài .NET 8.0 trên máy
+    }
+}
+```
+
+### 2. Basic Usage - .NET 8.0+
+
+```csharp
+using ZplRenderer.Infrastructure.Renderers;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        var service = new ZplRenderService();
+
+        // ASYNC method cho .NET 8.0
+        await service.ConvertZplToFileAsync(
             zplFilePath: @"C:\input\label.zpl",
             outputDirectory: @"C:\output",
             format: "pdf"
@@ -83,7 +154,7 @@ class Program
 }
 ```
 
-### 2. Chuyển đổi sang PNG
+### 3. Chuyển đổi sang PNG (.NET 4.0)
 
 ```csharp
 var service = new ZplRenderService();
@@ -95,7 +166,7 @@ service.ConvertZplToFile(
 );
 ```
 
-### 3. Chuyển đổi sang JPG
+### 4. Chuyển đổi sang JPG (.NET 4.0)
 
 ```csharp
 var service = new ZplRenderService();
@@ -362,27 +433,44 @@ input.zpl → output/label_0001.png
 
 ## ⚙️ Cơ Chế Hoạt Động
 
-### Lần chạy đầu tiên:
+ZplRenderer có 2 triển khai khác nhau tùy theo framework:
+
+### .NET 8.0 - Direct Rendering
 
 ```
-1. DLL extract console app → %TEMP%\ZplRenderer\
-   Thời gian: ~0.7-1 giây (file 26MB)
+ZplRenderService → BinaryKits.Zpl.Viewer → SkiaSharp → Output File
+   (Trực tiếp)      (Parse ZPL)              (Render)     (PNG/JPG/PDF)
+```
 
-2. Chạy console app để xử lý ZPL
-   Thời gian: Tùy độ phức tạp của ZPL
+**Đặc điểm:**
+- Xử lý trực tiếp trong cùng process
+- Nhanh, hiệu năng cao
+- Sử dụng các thư viện hiện đại
 
+### .NET 4.0 - Wrapper Architecture
+
+```
+ZplRenderService (.NET 4.0)
+    │
+    ├─→ Extract Console.exe (lần đầu)
+    │   Thời gian: ~0.7-1 giây (file 26MB)
+    │   Vị trí: %TEMP%\ZplRenderer\
+    │
+    └─→ Execute Console.exe (.NET 8.0)
+        │
+        └─→ BinaryKits.Zpl.Viewer → SkiaSharp → Output File
+```
+
+**Lần chạy đầu tiên:**
+1. Extract console app từ embedded resource → `%TEMP%\ZplRenderer\`
+2. Execute console app để xử lý ZPL
 3. Trả kết quả về
-```
 
-### Các lần chạy tiếp theo:
+**Các lần chạy tiếp theo:**
+1. Sử dụng lại console app đã extract (bỏ qua bước extract)
+2. Execute console app để xử lý ZPL (nhanh hơn ~700ms)
 
-```
-1. Sử dụng lại console app đã extract
-   (Bỏ qua bước extract)
-
-2. Chạy console app để xử lý ZPL
-   Thời gian: Nhanh hơn lần đầu
-```
+**Chi tiết luồng code:** [CODE_FLOW.md](CODE_FLOW.md)
 
 ---
 
@@ -613,14 +701,33 @@ MIT License - Xem file LICENSE để biết thêm chi tiết.
 
 ## 🎯 Quick Start Checklist
 
-- [ ] Download `ZplRenderer.dll` từ `bin/Release/net40/`
+- [ ] Build hoặc download `ZplRenderer.dll` ([BUILD_GUIDE.md](BUILD_GUIDE.md))
+- [ ] Chọn DLL phù hợp (.NET 8.0 hoặc .NET 4.0)
 - [ ] Add reference vào project
 - [ ] Thêm `using ZplRenderer.Infrastructure.Renderers;`
 - [ ] Tạo instance: `var service = new ZplRenderService();`
-- [ ] Gọi: `service.ConvertZplToFile(input, output, format);`
+- [ ] Gọi: `service.ConvertZplToFile(input, output, format);` (.NET 4.0) hoặc `await service.ConvertZplToFileAsync(...)` (.NET 8.0)
 - [ ] Test với file ZPL mẫu
 - [ ] Deploy DLL cùng ứng dụng
 
 ---
 
-**Built with ❤️ for .NET Framework 4.0 compatibility**
+## 📚 Tài Liệu Kỹ Thuật
+
+### 🎯 Cho End Users
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Hướng dẫn deployment chi tiết cho .NET 4.0 và .NET 8.0 ⭐
+- **[QUICK_START.md](QUICK_START.md)** - Hướng dẫn sử dụng nhanh
+
+### 🔧 Cho Developers
+- **[ARCHITECTURE_DECISION.md](ARCHITECTURE_DECISION.md)** - Tại sao chọn Wrapper Architecture? (Luồng tư duy từ đầu) ⭐⭐⭐
+- **[BUILD_GUIDE.md](BUILD_GUIDE.md)** - Hướng dẫn build project từ source
+- **[WHY_CONSOLE_APP.md](WHY_CONSOLE_APP.md)** - Giải thích tại sao có ZplRenderer.Console project
+- **[MULTI_TARGET_EXPLAINED.md](MULTI_TARGET_EXPLAINED.md)** - Giải thích Multi-Target Framework chi tiết
+- **[CODE_FLOW.md](CODE_FLOW.md)** - Mô tả chi tiết luồng hoạt động của code
+- **[TECHNICAL_STACK.md](TECHNICAL_STACK.md)** - Giải thích các công nghệ sử dụng
+- **[HOW_DLL_MERGING_WORKS.md](HOW_DLL_MERGING_WORKS.md)** - Cơ chế merge DLL (Costura.Fody)
+- **[RELEASE_NOTES.md](RELEASE_NOTES.md)** - Lịch sử phát hành và thay đổi
+
+---
+
+**Built with ❤️ for multi-framework compatibility (.NET 8.0 & .NET Framework 4.0)**
