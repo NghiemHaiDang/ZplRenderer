@@ -1,8 +1,12 @@
 ﻿#if NET40
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Reflection;
+using ZplRenderer.Config;
 using ZplRenderer.Core.Interfaces;
 #else
 using BinaryKits.Zpl.Viewer;
@@ -102,6 +106,99 @@ namespace ZplRenderer.Infrastructure.Renderers
                     {
                         fileStream.Write(buffer, 0, bytesRead);
                     }
+                }
+            }
+        }
+
+        // New method with options
+        public void ConvertZplToFile(string zplFilePath, string outputDirectory, string format, ZplRenderOptions options)
+        {
+            EnsureConsoleAppExtracted();
+
+            if (!File.Exists(zplFilePath))
+                throw new FileNotFoundException("ZPL file not found: " + zplFilePath);
+
+            if (!IsValidFormat(format))
+                throw new ArgumentException("Invalid format. Use: png, jpg, jpeg, or pdf");
+
+            Directory.CreateDirectory(outputDirectory);
+
+            // Build arguments with DPI and dimensions
+            string arguments = string.Format("\"{0}\" \"{1}\" \"{2}\" {3}",
+                zplFilePath, outputDirectory, format, options.Dpi);
+
+            if (options.LabelWidth.HasValue && options.LabelHeight.HasValue)
+            {
+                arguments += string.Format(" {0} {1}", options.LabelWidth.Value, options.LabelHeight.Value);
+            }
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = consoleExePath,
+                Arguments = arguments,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+
+            using (var process = Process.Start(startInfo))
+            {
+                string output = process.StandardOutput.ReadToEnd();
+                string error = process.StandardError.ReadToEnd();
+                process.WaitForExit();
+
+                if (process.ExitCode != 0)
+                {
+                    string debugInfo = string.Format("Command: {0} {1}\nOutput: {2}\nError: {3}",
+                        consoleExePath, arguments, output, error);
+                    throw new Exception(string.Format("ZPL conversion failed with exit code {0}. Debug: {1}",
+                        process.ExitCode, debugInfo));
+                }
+            }
+        }
+
+        // New method to get Images directly
+        public List<Image> ConvertZplToImages(string zplFilePath, ZplRenderOptions options)
+        {
+            EnsureConsoleAppExtracted();
+
+            if (!File.Exists(zplFilePath))
+                throw new FileNotFoundException("ZPL file not found: " + zplFilePath);
+
+            var images = new List<Image>();
+
+            // Create temp directory for output
+            string tempOutputDir = Path.Combine(Path.GetTempPath(), "ZplRenderer_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempOutputDir);
+
+            try
+            {
+                // Convert to PNG files first
+                ConvertZplToFile(zplFilePath, tempOutputDir, "png", options);
+
+                // Load PNG files as Images
+                string[] pngFiles = Directory.GetFiles(tempOutputDir, "*.png");
+                foreach (string pngFile in pngFiles)
+                {
+                    images.Add(Image.FromFile(pngFile));
+                }
+
+                return images;
+            }
+            finally
+            {
+                // Clean up temp files
+                try
+                {
+                    if (Directory.Exists(tempOutputDir))
+                    {
+                        Directory.Delete(tempOutputDir, true);
+                    }
+                }
+                catch
+                {
+                    // Ignore cleanup errors
                 }
             }
         }
@@ -237,6 +334,57 @@ namespace ZplRenderer.Infrastructure.Renderers
                     Console.WriteLine($"⚠️ Lỗi khi render label {fileIndex}: {ex.Message}");
                 }
             });
+        }
+
+        // New method with options (async version)
+        public async Task ConvertZplToFileAsync(string zplFilePath, string outputDirectory, string format, ZplRenderOptions options)
+        {
+            // For .NET 8.0, we don't use console app, so just call the original method
+            // In future, this could directly use BinaryKits with DPI support
+            await ConvertZplToFileAsync(zplFilePath, outputDirectory, format);
+        }
+
+        // New method to get Images directly (async version)
+        public async Task<List<System.Drawing.Image>> ConvertZplToImagesAsync(string zplFilePath, ZplRenderOptions options)
+        {
+            var images = new List<System.Drawing.Image>();
+
+            // Create temp directory for output
+            string tempOutputDir = Path.Combine(Path.GetTempPath(), "ZplRenderer_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempOutputDir);
+
+            try
+            {
+                // Convert to PNG files first
+                await ConvertZplToFileAsync(zplFilePath, tempOutputDir, "png", options);
+
+                // Load PNG files as Images
+                string[] pngFiles = Directory.GetFiles(tempOutputDir, "*.png");
+                foreach (string pngFile in pngFiles)
+                {
+                    using (var stream = new FileStream(pngFile, FileMode.Open, FileAccess.Read))
+                    {
+                        images.Add(System.Drawing.Image.FromStream(stream));
+                    }
+                }
+
+                return images;
+            }
+            finally
+            {
+                // Clean up temp files
+                try
+                {
+                    if (Directory.Exists(tempOutputDir))
+                    {
+                        await Task.Run(() => Directory.Delete(tempOutputDir, true));
+                    }
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+            }
         }
 #endif
     }
