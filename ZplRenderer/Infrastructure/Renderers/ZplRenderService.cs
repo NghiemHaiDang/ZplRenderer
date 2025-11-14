@@ -20,9 +20,12 @@ using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ZplRenderer.Config;
 using ZplRenderer.Core.Interfaces;
 using ZplRenderer.Infrastructure.Utils;
 #endif
@@ -239,7 +242,8 @@ namespace ZplRenderer.Infrastructure.Renderers
             {
                 buffer.Add(line);
 
-                if (line.Trim().Equals("^XZ", StringComparison.OrdinalIgnoreCase))
+                // Support both single-line and multiline ZPL formats
+                if (line.IndexOf("^XZ", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     try
                     {
@@ -253,6 +257,19 @@ namespace ZplRenderer.Infrastructure.Renderers
 
                     buffer.Clear();
                     MemoryOptimizer.ForceCollect();
+                }
+            }
+
+            // Process remaining buffer if any (for files without proper line breaks)
+            if (buffer.Count > 0)
+            {
+                try
+                {
+                    await ProcessZplChunkAsync(buffer, outputDirectory, format, fileIndex, document);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️ Lỗi khi xử lý label cuối cùng: {ex.Message}");
                 }
             }
 

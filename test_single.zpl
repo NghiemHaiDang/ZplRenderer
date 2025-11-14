@@ -1,0 +1,1 @@
+^XA^FT100,100^A0N,67,0^FDTestLabel^FS^XZ

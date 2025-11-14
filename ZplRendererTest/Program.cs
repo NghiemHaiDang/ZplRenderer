@@ -183,7 +183,9 @@ namespace ZplRendererTest
 ^CF0,190
 ^FO470,955^FDCA^FS
 
-^XZ";
+^XZ
+^XA^FT100,100^A0N,67,0^FDTestLabel^FS^XZ
+";
 
             File.WriteAllText(filePath, zplContent);
         }

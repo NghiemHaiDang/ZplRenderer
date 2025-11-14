@@ -136,7 +136,8 @@ namespace ZplRenderer.Console
             {
                 buffer.Add(line);
 
-                if (line.Trim().Equals("^XZ", StringComparison.OrdinalIgnoreCase))
+                // Check if line contains ^XZ (end of label marker)
+                if (line.IndexOf("^XZ", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     try
                     {
@@ -151,6 +152,20 @@ namespace ZplRenderer.Console
 
                     buffer.Clear();
                     GC.Collect();
+                }
+            }
+
+            // Process remaining buffer if any (for files without proper ^XZ termination)
+            if (buffer.Count > 0)
+            {
+                try
+                {
+                    await ProcessZplChunkAsync(buffer, outputDirectory, format, fileIndex, document, dpi, labelWidth, labelHeight);
+                    _logger?.LogDebug("Successfully processed label {LabelIndex}", fileIndex);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Error processing final label");
                 }
             }
 
