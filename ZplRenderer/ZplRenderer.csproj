@@ -23,7 +23,6 @@
   <ItemGroup>
     <Folder Include="Config\" />
     <Folder Include="Core\" />
-    <Folder Include="Core\Enums\" />
     <Folder Include="Core\Interfaces\" />
     <Folder Include="Infrastructure\" />
     <Folder Include="Infrastructure\Renderers\" />
@@ -73,11 +72,16 @@
     <PackageReference Include="Microsoft.Bcl.Async" Version="1.0.168" />
   </ItemGroup>
 
-  <!-- Embed console app for .NET 4.0 -->
+  <!-- Embed console app for .NET 4.0 - both x86 and x64 -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net40'">
     <EmbeddedResource Include="ZplRenderer.Console\bin\Release\net8.0\win-x64\publish\ZplRenderer.Console.exe">
-      <Link>ZplRenderer.Console.exe</Link>
-      <LogicalName>ZplRenderer.Console.exe</LogicalName>
+      <Link>ZplRenderer.Console.x64.exe</Link>
+      <LogicalName>ZplRenderer.Console.x64.exe</LogicalName>
+      <WithCulture>false</WithCulture>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ZplRenderer.Console\bin\Release\net8.0\win-x86\publish\ZplRenderer.Console.exe">
+      <Link>ZplRenderer.Console.x86.exe</Link>
+      <LogicalName>ZplRenderer.Console.x86.exe</LogicalName>
       <WithCulture>false</WithCulture>
     </EmbeddedResource>
   </ItemGroup>
@@ -88,14 +92,17 @@
   </PropertyGroup>
 
   <!-- Auto-publish Console app before building .NET 4.0 target -->
-  <Target Name="PublishConsoleApp" BeforeTargets="BeforeBuild" Condition="'$(TargetFramework)' == 'net40' AND !Exists('ZplRenderer.Console\bin\Release\net8.0\win-x64\publish\ZplRenderer.Console.exe')">
-    <Message Text="Publishing ZplRenderer.Console for embedding..." Importance="high" />
-    <Exec Command="dotnet publish $(MSBuildProjectDirectory)\ZplRenderer.Console\ZplRenderer.Console.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:TrimMode=partial" />
+  <Target Name="PublishConsoleApp" BeforeTargets="BeforeBuild" Condition="'$(TargetFramework)' == 'net40'">
+    <!-- Publish x64 if not exists -->
+    <Exec Command="dotnet publish $(MSBuildProjectDirectory)\ZplRenderer.Console\ZplRenderer.Console.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:TrimMode=partial" Condition="!Exists('ZplRenderer.Console\bin\Release\net8.0\win-x64\publish\ZplRenderer.Console.exe')" />
+    <!-- Publish x86 if not exists -->
+    <Exec Command="dotnet publish $(MSBuildProjectDirectory)\ZplRenderer.Console\ZplRenderer.Console.csproj -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:TrimMode=partial" Condition="!Exists('ZplRenderer.Console\bin\Release\net8.0\win-x86\publish\ZplRenderer.Console.exe')" />
   </Target>
 
-  <!-- Verify embedded console app exists -->
+  <!-- Verify embedded console apps exist -->
   <Target Name="VerifyEmbeddedConsoleApp" BeforeTargets="BeforeBuild" Condition="'$(TargetFramework)' == 'net40'">
-    <Error Condition="!Exists('ZplRenderer.Console\bin\Release\net8.0\win-x64\publish\ZplRenderer.Console.exe')" Text="Console app not found. Please run: dotnet publish ZplRenderer.Console\ZplRenderer.Console.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:TrimMode=partial" />
+    <Error Condition="!Exists('ZplRenderer.Console\bin\Release\net8.0\win-x64\publish\ZplRenderer.Console.exe')" Text="Console app x64 not found. Please run: dotnet publish ZplRenderer.Console\ZplRenderer.Console.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:TrimMode=partial" />
+    <Error Condition="!Exists('ZplRenderer.Console\bin\Release\net8.0\win-x86\publish\ZplRenderer.Console.exe')" Text="Console app x86 not found. Please run: dotnet publish ZplRenderer.Console\ZplRenderer.Console.csproj -c Release -r win-x86 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true -p:TrimMode=partial" />
   </Target>
 
   <!-- Manually copy Windows native assets for .NET 8.0 only -->

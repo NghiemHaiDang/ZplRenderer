@@ -5,8 +5,10 @@ namespace ZplRenderer.Config
 {
     public class ZplRenderOptions
     {
-        public int Dpi { get; set; } = 203;
+        public int Dpi { get; set; } = AppConstants.DefaultDpi;
+
         public int? LabelWidth { get; set; }
+
         public int? LabelHeight { get; set; }
 
         public ZplRenderOptions()
@@ -31,8 +33,10 @@ namespace ZplRenderer.Config
 {
     public class ZplRenderOptions
     {
-        public int Dpi { get; set; } = 203;
+        public int Dpi { get; set; } = AppConstants.DefaultDpi;
+
         public int? LabelWidth { get; set; }
+
         public int? LabelHeight { get; set; }
 
         public ZplRenderOptions()

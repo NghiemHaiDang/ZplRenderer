@@ -8,14 +8,22 @@ namespace ZplRenderer.Core.Interfaces
 {
     public interface IZplRenderer
     {
-        // Original method for backward compatibility
-        void ConvertZplToFile(string zplFilePath, string outputDirectory, string format);
+        /// <summary>
+        /// HÀM DUY NHẤT - Convert ZPL to file với tất cả tham số optional
+        /// </summary>
+        /// <param name="zplFilePath">Đường dẫn file ZPL (BẮT BUỘC)</param>
+        /// <param name="outputDirectory">Thư mục output (null = Desktop/ZplRenderer_Output)</param>
+        /// <param name="format">Format file (null = "png")</param>
+        /// <param name="options">Options (null = default: DPI 203, no size override)</param>
+        void ConvertZplToFile(string zplFilePath, string outputDirectory = null, string format = null, ZplRenderOptions options = null);
 
-        // New method with options and Image output
-        void ConvertZplToFile(string zplFilePath, string outputDirectory, string format, ZplRenderOptions options);
-
-        // Method to get Image directly
-        List<Image> ConvertZplToImages(string zplFilePath, ZplRenderOptions options);
+        /// <summary>
+        /// Convert ZPL to Image objects trong memory
+        /// </summary>
+        /// <param name="zplFilePath">Đường dẫn file ZPL (BẮT BUỘC)</param>
+        /// <param name="options">Options (null = default: DPI 203, no size override)</param>
+        /// <param name="format">Format (null = "jpg", có thể "png")</param>
+        List<Image> ConvertZplToImages(string zplFilePath, ZplRenderOptions options = null, string format = null);
     }
 }
 #else
@@ -29,14 +37,22 @@ namespace ZplRenderer.Core.Interfaces
 {
     public interface IZplRenderer
     {
-        // Original method for backward compatibility
-        Task ConvertZplToFileAsync(string zplFilePath, string outputDirectory, string format);
+        /// <summary>
+        /// HÀM DUY NHẤT - Convert ZPL to file async với tất cả tham số optional
+        /// </summary>
+        /// <param name="zplFilePath">Đường dẫn file ZPL (BẮT BUỘC)</param>
+        /// <param name="outputDirectory">Thư mục output (null = Desktop/ZplRenderer_Output)</param>
+        /// <param name="format">Format file (null = "png")</param>
+        /// <param name="options">Options (null = default: DPI 203, no size override)</param>
+        Task ConvertZplToFileAsync(string zplFilePath, string? outputDirectory = null, string? format = null, ZplRenderOptions? options = null);
 
-        // New method with options and Image output
-        Task ConvertZplToFileAsync(string zplFilePath, string outputDirectory, string format, ZplRenderOptions options);
-
-        // Method to get Image directly
-        Task<List<Image>> ConvertZplToImagesAsync(string zplFilePath, ZplRenderOptions options);
+        /// <summary>
+        /// Convert ZPL to Image objects trong memory (async)
+        /// </summary>
+        /// <param name="zplFilePath">Đường dẫn file ZPL (BẮT BUỘC)</param>
+        /// <param name="options">Options (null = default: DPI 203, no size override)</param>
+        /// <param name="format">Format (null = "jpg", có thể "png")</param>
+        Task<List<Image>> ConvertZplToImagesAsync(string zplFilePath, ZplRenderOptions? options = null, string? format = null);
     }
 }
 #endif

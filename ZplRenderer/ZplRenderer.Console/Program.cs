@@ -18,7 +18,6 @@ namespace ZplRenderer.Console
 
         static async Task<int> Main(string[] args)
         {
-            // Setup logger
             using var loggerFactory = LoggerFactory.Create(builder =>
             {
                 builder.AddConsole();
@@ -74,7 +73,6 @@ namespace ZplRenderer.Console
                     _logger.LogInformation("Label size override - Width: {Width}, Height: {Height}", labelWidth, labelHeight);
                 }
 
-                // Validate input
                 if (!File.Exists(zplFilePath))
                 {
                     _logger.LogError("ZPL file not found: {ZplFile}", zplFilePath);
@@ -87,7 +85,7 @@ namespace ZplRenderer.Console
                     return 3;
                 }
 
-                // Create output directory
+                // Output directory
                 Directory.CreateDirectory(outputDirectory);
                 _logger.LogDebug("Output directory created/verified: {OutputDir}", outputDirectory);
 
@@ -136,7 +134,6 @@ namespace ZplRenderer.Console
             {
                 buffer.Add(line);
 
-                // Check if line contains ^XZ (end of label marker)
                 if (line.IndexOf("^XZ", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     try
@@ -155,7 +152,6 @@ namespace ZplRenderer.Console
                 }
             }
 
-            // Process remaining buffer if any (for files without proper ^XZ termination)
             if (buffer.Count > 0)
             {
                 try
@@ -194,17 +190,82 @@ namespace ZplRenderer.Console
             {
                 try
                 {
-                    // Use BinaryKits.Zpl.Viewer to render ZPL to image
-                    // Note: BinaryKits.Zpl.Viewer 1.3.0 uses default DPI from ZPL or 203 if not specified
-                    // Label size is auto-detected from ZPL commands (^PW, ^LL)
+                    // Priority logic for label size:
+                    // 1. ZPL has ^PW/^LL → Use from ZPL (highest priority)
+                    // 2. User provides labelWidth/labelHeight → Convert to 203 DPI and inject into ZPL
+                    // 3. No size from ZPL and user → Use system default (812x1218 at 203 DPI)
+                    bool hasWidth = zplText.Contains("^PW", StringComparison.OrdinalIgnoreCase);
+                    bool hasHeight = zplText.Contains("^LL", StringComparison.OrdinalIgnoreCase);
+
+                    // If ZPL doesn't have size and user provides override, inject into ZPL
+                    if (!hasWidth && labelWidth.HasValue)
+                    {
+                        int widthAt203Dpi = (int)(labelWidth.Value / (double)dpi * 203.0);
+
+                        // Insert ^PW after ^XA
+                        zplText = System.Text.RegularExpressions.Regex.Replace(
+                            zplText,
+                            @"\^XA",
+                            $"^XA{Environment.NewLine}^PW{widthAt203Dpi}",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                        );
+                        _logger?.LogDebug("Injected ^PW{Width} into ZPL (user {UserWidth} @ {Dpi} DPI → {Width} @ 203 DPI)",
+                            widthAt203Dpi, labelWidth.Value, dpi, widthAt203Dpi);
+                    }
+
+                    if (!hasHeight && labelHeight.HasValue)
+                    {
+                        // User provides size at target DPI, convert to 203 DPI for BinaryKits
+                        int heightAt203Dpi = (int)(labelHeight.Value / (double)dpi * 203.0);
+
+                        // Insert ^LL after ^XA (or after ^PW if we just added it)
+                        string pattern = hasWidth || labelWidth.HasValue ? @"\^PW\d+" : @"\^XA";
+                        zplText = System.Text.RegularExpressions.Regex.Replace(
+                            zplText,
+                            pattern,
+                            $"$0{Environment.NewLine}^LL{heightAt203Dpi}",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                        );
+                        _logger?.LogDebug("Injected ^LL{Height} into ZPL (user {UserHeight} @ {Dpi} DPI → {Height} @ 203 DPI)",
+                            heightAt203Dpi, labelHeight.Value, dpi, heightAt203Dpi);
+                    }
+
+                    // If no size in ZPL and user didn't provide, use system defaults (4x6 inches at 203 DPI)
+                    if (!hasWidth && !labelWidth.HasValue)
+                    {
+                        // Always inject 812 (4 inches @ 203 DPI), will be scaled later
+                        const int defaultWidth = 812; // AppConstants.DefaultLabelWidth
+                        zplText = System.Text.RegularExpressions.Regex.Replace(
+                            zplText,
+                            @"\^XA",
+                            $"^XA{Environment.NewLine}^PW{defaultWidth}",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                        );
+                        _logger?.LogDebug("Using system default width: {Width} dots (4 inches @ 203 DPI, will scale to {Dpi} DPI)",
+                            defaultWidth, dpi);
+                    }
+
+                    if (!hasHeight && !labelHeight.HasValue)
+                    {
+                        // Always inject 1218 (6 inches @ 203 DPI), will be scaled later
+                        const int defaultHeight = 1218; // AppConstants.DefaultLabelHeight
+                        string pattern = hasWidth || labelWidth.HasValue || true ? @"\^PW\d+" : @"\^XA";
+                        zplText = System.Text.RegularExpressions.Regex.Replace(
+                            zplText,
+                            pattern,
+                            $"$0{Environment.NewLine}^LL{defaultHeight}",
+                            System.Text.RegularExpressions.RegexOptions.IgnoreCase
+                        );
+                        _logger?.LogDebug("Using system default height: {Height} dots (6 inches @ 203 DPI, will scale to {Dpi} DPI)",
+                            defaultHeight, dpi);
+                    }
+
                     IPrinterStorage printerStorage = new PrinterStorage();
 
-                    // Create analyzer and drawer with DPI-aware rendering
                     var analyzer = new ZplAnalyzer(printerStorage);
                     var drawer = new ZplElementDrawer(printerStorage);
 
                     // Apply DPI scaling: BinaryKits renders at 203 DPI by default
-                    // We'll scale the output if different DPI is requested
                     double dpiScale = dpi / 203.0;
                     _logger?.LogDebug("DPI: {Dpi}, Scale factor: {Scale}", dpi, dpiScale);
 
@@ -254,13 +315,9 @@ namespace ZplRenderer.Console
                                 using 
                                 (var sourceImage = SixLabors.ImageSharp.Image.Load(imageBytes))
                                 {
-                                    // Create RGB24 image (no alpha) with white background
                                     using (var rgbImage = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgb24>(sourceImage.Width, sourceImage.Height, SixLabors.ImageSharp.Color.White))
                                     {
-                                        // Draw source image onto white background (alpha blending happens automatically)
                                         rgbImage.Mutate(ctx => ctx.DrawImage(sourceImage, 1.0f));
-
-                                        // Save as JPG with high quality
                                         rgbImage.Save($"{baseFileName}.jpg", new JpegEncoder { Quality = 95 });
                                     }
                                 }
@@ -270,11 +327,7 @@ namespace ZplRenderer.Console
                                 {
                                     var imageData = ImageDataFactory.Create(imageBytes);
                                     var pdfImage = new iText.Layout.Element.Image(imageData);
-
-                                    // Scale image to fit page
                                     pdfImage.SetAutoScale(true);
-
-                                    // Add image to document (new page for each label)
                                     document.Add(pdfImage);
                                     document.Add(new AreaBreak());
 
